@@ -1,20 +1,27 @@
 import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'local-llm-manager'))
 
 import chromadb
+from local_llm import LocalLLMManager
 
 import config
 from modules import PDFIngester, RAGEngine
 
-
 class CLIApp:
-    def __init__(self):
+    def __init__(self, llm_manager: LocalLLMManager):
         self._client = chromadb.PersistentClient(path=config.CHROMA_PERSIST_DIR)
         self._collection = self._client.get_or_create_collection(
             name=config.CHROMA_COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"},
         )
         self._ingester = PDFIngester(self._collection, config)
+        self._ingester._llm_manager = llm_manager
+        
         self._engine = RAGEngine(self._collection, config)
+        self._engine._llm_manager = llm_manager
+
 
     def _debug(self, message: str) -> None:
         if config.DEBUG:
@@ -24,7 +31,7 @@ class CLIApp:
         print("""
 ╔══════════════════════════════════════════════╗
 ║              AI RAG — CLI Demo               ║
-║        Gemini + ChromaDB + PDF               ║
+║        Llama 3 + ChromaDB + PDF              ║
 ╚══════════════════════════════════════════════╝
 """)
 
@@ -40,7 +47,7 @@ class CLIApp:
 """)
 
     def _print_status(self) -> None:
-        print("✅ เชื่อมต่อ Gemini API และ ChromaDB สำเร็จ")
+        print("✅ รันโมเดล Local Llama 3 (Native) และ ChromaDB สำเร็จ")
         print(f"📊 มีข้อมูลอยู่ใน ChromaDB: {self._ingester.get_collection_count()} chunks")
 
         ingested = self._ingester.list_ingested_docs()
@@ -152,7 +159,11 @@ class CLIApp:
 
 def main() -> None:
     try:
-        app = CLIApp()
+        print("🚀 กำลังเตรียมความพร้อม Local LLM Module...")
+        llm_manager = LocalLLMManager()
+        llm_manager.initialize()
+        
+        app = CLIApp(llm_manager)
     except ValueError as e:
         print(f"\n❌ ข้อผิดพลาด: {e}\n")
         sys.exit(1)

@@ -1,7 +1,5 @@
 from typing import List, Dict, Any
 
-from google.genai import types
-
 
 class RAGEngine:
     def __init__(self, collection, config):
@@ -13,6 +11,7 @@ class RAGEngine:
         """
         self._collection = collection
         self._config = config
+        self._llm_manager = None
 
     def _debug(self, message: str) -> None:
         if self._config.DEBUG:
@@ -27,12 +26,7 @@ class RAGEngine:
         Returns:
             เวกเตอร์คำถาม
         """
-        result = self._config.GENAI_CLIENT.models.embed_content(
-            model=self._config.EMBED_MODEL,
-            contents=query,
-            config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
-        )
-        return result.embeddings[0].values
+        return self._llm_manager.embed_text(query)
 
     def retrieve(self, query: str, top_k: int = None) -> List[Dict[str, Any]]:
         """ค้นหาชิ้นข้อมูลที่เกี่ยวข้อง
@@ -114,11 +108,11 @@ class RAGEngine:
         Returns:
             คำตอบจากโมเดล
         """
-        response = self._config.GENAI_CLIENT.models.generate_content(
-            model=self._config.GEN_MODEL,
-            contents=prompt,
+        return self._llm_manager.generate_text(
+            prompt=prompt,
+            max_tokens=1024,
+            stop=["=== คำถาม ==="]
         )
-        return response.text
 
     def query(self, question: str) -> Dict[str, Any]:
         """ตอบคำถามด้วย RAG

@@ -3,7 +3,6 @@ import hashlib
 from typing import List, Dict, Any
 
 import fitz
-from google.genai import types
 
 
 class PDFIngester:
@@ -16,6 +15,7 @@ class PDFIngester:
         """
         self._collection = collection
         self._config = config
+        self._llm_manager = None
 
     def _debug(self, message: str) -> None:
         if self._config.DEBUG:
@@ -95,12 +95,8 @@ class PDFIngester:
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
-            result = self._config.GENAI_CLIENT.models.embed_content(
-                model=self._config.EMBED_MODEL,
-                contents=batch,
-                config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT"),
-            )
-            embeddings.extend([e.values for e in result.embeddings])
+            batch_embeddings = self._llm_manager.embed_text(batch)
+            embeddings.extend(batch_embeddings)
             print(f"   🔢 Embedded {min(i + batch_size, len(texts))}/{len(texts)} chunks...")
 
         self._debug(f"embeddings={len(embeddings)}")
